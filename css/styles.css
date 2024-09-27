@@ -41,13 +41,18 @@ nav {
 }
 
 .links {
+    display: flex;
     align-self: center;
 }
 
-.banner-image {
+.link-container {
+    height: 30px;
+}
+
+.image-link {
     width: 30px;
     height: 30px;
-    vertical-align: middle;
+    margin-left: 10px;
 }
 
 .box {
