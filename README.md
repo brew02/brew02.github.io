@@ -1,3 +1,3 @@
 # brew02.github.io
 
-Test
+Contains all of the files for my technical blog.

@@ -1,0 +1,50 @@
+:root {
+    background-color: #393e46;
+}
+
+body {
+    color: #f7f7f7;
+    margin: 0;
+    padding: 0;
+}
+
+.banner {
+    
+    display: flex;
+    align-items: center;
+    height: 60px;
+}
+
+.banner > a {
+    color: black;
+    text-decoration: none;
+}
+
+.home {
+    padding-left: 10px;
+    font-size: 36px;
+    font-weight: 600;
+    float: left;
+}
+
+.external-links {
+    align-items: center;
+    vertical-align: middle;
+    margin-left: auto;
+}
+
+.banner-image {
+    padding-right: 10px;
+    width: 30px;
+    height: 30px;
+    vertical-align: middle;
+}
+
+.content {
+    display: flex;
+    width: 50%;
+    background-color: #5c636e;
+    border-style: solid;
+    border-color: #f8b500;
+    border-radius: 3px;
+}
