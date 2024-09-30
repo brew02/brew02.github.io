@@ -37,10 +37,23 @@ a {
 nav {
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 ul {
     list-style: none;
+}
+
+nav li {
+    margin-left: 15px;
+}
+
+main li {
+    margin-bottom: 15px;
+}
+
+main li:last-child {
+    margin-bottom: 0;
 }
 
 .post-link-container > a {
@@ -59,16 +72,6 @@ a:hover {
 
 .links {
     display: flex;
-    align-self: center;
-}
-
-.link-container {
-    display: flex;
-    height: 36px;
-    width: 36px;
-    margin-left: 10px;
-    align-items: center;
-    justify-content: center;
 }
 
 .image-link {
@@ -98,5 +101,4 @@ a:hover {
 
 .post-info {
     font-size: 12px;
-    margin-bottom: 10px;
 }
