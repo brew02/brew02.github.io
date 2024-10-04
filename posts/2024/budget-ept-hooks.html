@@ -1,0 +1,361 @@
+
+
+<!--
+    TODO: 
+    Add modified page table image example
+    add self-referencing pml4 image example, maybe add header-link CSS styling, 
+    update links (linkedin, github poc), re-read through article
+    improve CPL section
+    add section tags around different sections
+    re-read through code (maybe use html validator)
+    add more styling for #GP, #PF, etc...
+    add captions for images
+    update font color on existing image
+    add external links section
+    maybe mention Selene and VirtualBox
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Extended Page Table Hooks on a Budget</title>
+        <link rel="stylesheet" href="/css/styles.css">
+    </head>
+
+    <body>
+        <nav class="box">
+            <a class="home" href="/">Home</a>
+            <ul class="links">
+                <li>
+                    <a class="links" href="https://github.com/brew02" target="_blank">
+                        <img class="image-link" src="/resources/GitHub.png" alt="GitHub Logo">
+                    </a>
+                </li>
+                <li>
+                    <a class="links" href="/" target="_blank">
+                        <img class="image-link" src="/resources/LinkedIn.png" alt="LinkedIn Logo">
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="box">
+            <article>
+                <h1>Extended Page Table Hooks on a Budget</h1>
+                <time class="post-info" datetime="2024-09-30">September 30, 2024</time>
+                <br>
+                <a class="post-info" href="/author/about.html">brew02</a>
+
+                <h2>Introduction</h2>
+                <p>
+                    Extended page tables (EPT) are a part of Intel's virtual machine extension (VMX)
+                    support for address translation. One of the unique things about EPT is that it
+                    allows programmers to easily allow execute-only accesses to pages of memory,
+                    something that isn't supported in the regular page tables, and isn't supported
+                    for AMD's very similar implementation called nested page tables (NPT). This unique
+                    feature has been utilized in 
+                    <a class="article-link" href="https://github.com/tandasat/DdiMon">many</a>
+                    <a class="article-link" href="https://github.com/Gbps/gbhv">open</a>
+                    <a class="article-link" href="https://github.com/Air14/HyperHide">source</a>
+                    <a class="article-link" href="https://github.com/HyperDbg/HyperDbg">hypervisors</a>
+                    for stealthy inline-hooks, allowing for easy monitoring and debugging of interesting
+                    pieces of code.
+                </p>
+                <p>
+                    Due to the usefulness of such a feature, many individuals have attempted to use
+                    other processor features to emulate the execute-only memory capabilities that EPT
+                    offers. Unfortunately, most of these processor features are just as, if not more,
+                    exclusive than EPT, making them inviable for a cross-platform solution. 
+                    But what if there were a processor feature supported across both Intel and AMD processors
+                    that would allow for us to emulate this behavior? What if there were a feature that 
+                    could be used both with, and without, hardware virtualization to create these 
+                    pseudo-EPT hooks? These are the exact questions this post aims to answer.
+                </p>
+
+                <h2>More Security Means More Possibilities</h2>
+                <p>
+                    Over 10 years ago Intel began rolling out new security features for processors
+                    that aimed to define stricter isolation between kernel mode and user mode memory.
+                    The two features primarily responsible for this are supervisor mode execution
+                    prevention (SMEP) and supervisor mode access prevention (SMAP). As the names of 
+                    the features suggest, their purpose is to prevent supervisor (kernel) mode code
+                    from executing and accessing user mode memory, respectively. 
+                </p>
+                <p>
+                    Availability of these features can be checked by executing the <code>CPUID</code>
+                    instruction with <code>EAX=07h, ECX=0h</code> and checking <code>EBX[bit 7]</code>
+                    for SMEP support and <code>EBX[bit 20]</code> for SMAP support (Note: SMAP support
+                    also implies support for the <code>CLAC</code> and <code>STAC</code> instructions).
+                    If a processor supports these features, they can be toggled using <code>CR4[bit 20]</code>
+                    for SMEP and <code>CR4[bit 21]</code> for SMAP. Additionally, if SMAP is enabled in
+                    the CR4 register, the access control (AC) flag in the RFLAGS register (<code>RFLAGS[bit 18]</code>)
+                    can be used to temporarily allow supervisor data accesses to user memory when set. This 
+                    bit can be set at current privilege level (CPL) 0 using the STAC instruction and cleared
+                    using the CLAC instruction. Strangely, it is possible to update this flag at CPL &gt 0 by
+                    using the <code>POPF</code> instruction.
+                </p>
+                <p>
+                    With this information in mind, a 
+                    <a class="article-link" href="/">simple proof-of-concept (POC)</a> can be created that demonstrates how one 
+                    could leverage these security features to create pseudo-EPT hooks. The basic idea is 
+                    as follows:
+                </p>
+                <ol>
+                    <li>
+                        Setup page fault (#PF) and debug fault (#DB) handlers in the interrupt descriptor table (IDT).
+                    </li>
+                    <li>
+                        Modify <strong>all levels</strong> of the page tables such that the user/supervisor bit
+                        (bit 2) is set.
+                    </li>
+                    <li>
+                        Disable SMEP in the CR4 register.
+                    </li>
+                    <li>
+                        Enable SMAP in the CR4 register.
+                    </li>
+                    <li>
+                        Ensure that the AC bit is unset in the RFLAGS register.
+                    </li>
+                </ol>
+                <p>
+                    If done correctly, all code running at CPL &lt 3 will now generate a #PF when attempting
+                    to read or write to our hooked pages, including code executing on the pages. If an access violation is
+                    generated, we can handle it much like we would with an EPT violation. 
+                    We swap the modified page frame number (PFN) to the original
+                    PFN in the page table entry (PTE), set the AC bit in the RFLAGS register, and then
+                    set the trap flag (TF) bit in the RFLAGS register (<code>RFLAGS[bit 8]</code>). After letting the instruction 
+                    execute, we handle the ensuing #DB by swapping the PFN once again and resetting
+                    the AC bit (the TF bit should already be cleared).
+                </p>
+
+                <h2>Caveats and Improvements</h2>
+                <p>
+                    If you've been following along closely, you may have already noticed some of the 
+                    caveats that this method has. This section will introduce several of these caveats
+                    and propose possible solutions for fixing them.
+                </p>
+                <div class="inner-article">
+                    <h3>The CR4 Register</h3>
+                    <p>
+                        The first noticeable caveat with this solution is that the CR4 register, which is 
+                        instrumental to this implementation, is able to be read and written to by any 
+                        code executing at CPL 0. This poses difficulties as operating systems may wish
+                        to have these bits set one way, while we need the bits in the CR4 register 
+                        to be set another way for our hooks to remain unseen.
+                    </p>
+                    <p>
+                        Here are two solutions to solve this:
+                    </p>
+                    <ol>
+                        <li>
+                            If hardware virtualization technology is leveraged, one could 
+                            enable control register exiting within their virtual machine control 
+                            structure/block (VMCS/VMCB) to intercept reads and writes to the CR4
+                            register. With this enabled, the values that we wish for the CR4
+                            register to contain can not only be retained, but the real values
+                            can be spoofed, causing the guest to be none-the-wiser to what is 
+                            happening. Note: for processors that support it, it would be wise 
+                            to utilize a CR4 mask and shadow to reduce the number of exits that 
+                            occur, improving performance greatly.
+                        </li>
+                        <li>
+                            If hardware virtualization technology is not leveraged, one could
+                            utilize old-fashioned software virtualization techniques to intercept
+                            control register accesses. The basic idea behind software virtualization
+                            is to make use of CPL 1 or 2 to deprivilege the code enough to cause
+                            invalid opcode (#UD) or general protection (#GP) exceptions when executing 
+                            privileged instructions (this will require #UD and #GP handlers in the IDT).
+                            I might write a brief blog post about software virtualization in the future as 
+                            it's what is used as part of the demonstration in my POC and it's 
+                            pretty interesting.
+                        </li>
+                    </ol>
+
+                    <h3 id="AC-Bit">The AC Bit</h3>
+                    <p>
+                        The AC bit is another part of this project that is crucial for its
+                        functionality, but it can be read or written to with even less
+                        scrutiny than the CR4 register. As mentioned briefly before, despite 
+                        the privilege checks for the <code>STAC</code> and <code>CLAC</code> 
+                        instructions, it was decided that user code could simply execute a 
+                        <code>POPF</code> instruction to update the AC bit. Consequently, it is 
+                        possible for code running at any CPL to enable the AC bit, allowing free 
+                        reign to read (or write) to our hooked pages.
+                    </p>
+                    <p>
+                        Unfortunately, the solution to this problem is not an easy one. Hardware 
+                        virtualization technology doesn't help at all in this case as there is 
+                        no way to exit on modifications to the RFLAGS register, and software
+                        virtualization would only intercept the <code>STAC</code> and 
+                        <code>CLAC</code> instructions due to the strange behavior of the 
+                        <code>POPF</code> instruction.
+                    </p>
+
+                    <p>
+                        This leaves us with only one solution: binary instrumentation. This 
+                        may seem daunting at first, but when combined with the information in 
+                        the <a class="article-link" href="#Race-Condition">race condition</a>
+                        section, it should work quite well. The basic idea is to <strong>always</strong>
+                        generate a #PF when external code begins to execute our hooked pages, 
+                        forcefully reset the AC bit, and disassemble and intercept all instructions 
+                        that could modify the AC bit by patching them with an <code>INT 3</code> 
+                        (breakpoint (#BP)) instruction (this will require a #BP handler in the IDT).
+                        In the #BP handler, we can do some basic checks to see if the code is trying
+                        to modify the AC bit and respond accordingly (it would be prudent to not simply 
+                        discard modifications, but instead handle them properly).
+                    </p>
+
+                    <h3 id="Race-Condition">The Race Condition</h3>
+                    <p>
+                        The problem with modifying the page tables — such as swapping between the 
+                        modified and original PFNs in our case — is that they are generally shared 
+                        across all central processing unit (CPU) cores within an operating system (OS).
+                        This behavior makes it possible for a separate thread running on a separate 
+                        core to accidentally, or purposefully, execute the original page of memory, 
+                        bypassing our hook and potentially revealing it inadvertently. 
+                    </p>
+                    <p>
+                        The key problem here is that the page tables are typically shared between cores. 
+                        Thus, one solution would be to enable SMEP and disable SMAP whenever code is 
+                        executing outside one of our hooked pages. Once an SMEP access violation is 
+                        triggered, we disable SMEP and enable SMAP, and then we swap to a completely
+                        new set of page tables where all levels that map our hooked page in the page 
+                        tables have new physical mappings controlled solely by us, with the final PTE 
+                        mapping the modified PFN for our hooked page. This makes it impossible for a 
+                        separate thread to snoop our modified memory, but it does introduce a new 
+                        issue: page table desynchronization.
+                    </p>
+                    <p>
+                        Page table desynchronization can occur due to changes from the underlying OS,
+                        such as freeing or paging memory. If any entry within the mappings 
+                        that we control is changed to a different physical address in the original 
+                        page tables, our modified page tables won't see that update. So all 
+                        subsequent memory accesses that rely on such an entry (while using our 
+                        modified page table), have the potential of translating to incorrect 
+                        physical addresses. This could not only inadvertently reveal our hooks, it 
+                        could also be catastrophic for the system.
+                    </p>
+                </div>
+                <img class="article-image" src="/resources/PageTableDesync.svg" alt="Original Page Tables">
+                <div class="inner-article">
+                    <p>
+                        Fortunately, there are actually quite a few ways to solve this issue. One 
+                        of the easiest methods would be to employ something similar to our page 
+                        swapping mechanism that we use to handle SMAP access violations. Within our 
+                        modified page table, we can make it such that all mappings, besides our hooks 
+                        and some other critical structures and code such as the IDT, IDT handlers, GDT, 
+                        etc..., are null. This will make it so that any access to <em>uncertain</em> 
+                        memory will generate a #PF, which can then be handled by swapping the CR3 
+                        value to the original page tables, setting the TF, executing the original 
+                        instruction, and then swapping back to the modified page tables in the 
+                        #DB handler. Although this solution may be one of the easier ones, it still 
+                        comes with heavy performance implications.
+                    </p>
+                    <p>
+                        Another solution — which you may have thought of while reading previous solution —
+                        is to have SMEP <strong>AND</strong> SMAP enabled whenever code is executing outside
+                        one of our hooked pages. Then, whenever an SMAP access violation occurs, we can 
+                        use a similar method as to what was described above and emulate the read or write 
+                        accordingly.
+                    </p>
+                    <p>
+                        P.S. The reason why we enable SMEP, and consequently cause SMEP related access 
+                        violations, is primarily due to issues described in the
+                        <a class="article-link" href="#AC-Bit">AC bit</a> section.
+                    </p>
+
+                    <h3 id="CPL">The CPL</h3>
+                    <p>
+                        Another issue that comes as a result of this method is that our hooks, by default,
+                        are completely bypassed by code running at CPL 3, ironically enough. Possibly the 
+                        easiest way to fix this issue is to set the execute-disable (XD) bit (bit 63) in 
+                        the PTE that maps the hooked page. Then, you can employ a method similar to what 
+                        was discussed in the 
+                        <a class="article-link" href="#Race-Condition">race condition</a> section.
+                        
+                    </p>
+
+                    <h3>The Page Tables</h3>
+                    <p>
+                        The final caveat that must be taken care of is that we must modify the 
+                        user/supervisor bit (or the XD bit as detailed in the 
+                        <a class="article-link" href="#CPL">CPL</a> section) in the page tables 
+                        to achieve these hooks. Code running at CPL &lt 3 has the innate ability to 
+                        access the page tables. One of the most 
+                        commonly used methods for accessing arbitrary entries in the page 
+                        tables is to use a self-referencing page-map level 4 entry (PML4E).
+                        Without going into too much detail, this entry in the PML4 will 
+                        contain the same PFN used to map the current page table in the 
+                        CR3 register. This allows for virtual addresses to be constructed
+                        that allow for easy, arbitrary access to any entry.
+                    </p>
+                    <p>
+                        Why is this important information? Because this method of accessing 
+                        page table entries is exactly what we are going to leverage to prevent 
+                        access to the page tables. The simple solution is to mark this PML4E 
+                        as not present, and handle all of the resulting access violations 
+                        accordingly. If an attempt is made to read from an entry that has been 
+                        modified, you now have the ability to spoof that information. Writes to
+                        the page tables should not simply be ignored or put into a dummy 
+                        page table somewhere, they should be examined carefully and emulated 
+                        accordingly.                   
+                    </p>
+                    <p>
+                        The next logical question would be: what if there are other mappings 
+                        for entries in the page tables? A practical example of this would be 
+                        the use of MmMapIoSpace (Windows &lt1803) to map the physical address 
+                        of some page table structure (PML4, PDPT, PD, PT). This would provide 
+                        a user with a separate virtual address that allowed access to that mapped 
+                        page table structure, completely bypassing the use of the self-referencing 
+                        PML4E. The solution to this problem can be broken into two distinct 
+                        scenarios:
+                    </p>
+                    <ol>
+                        <li>
+                            Additional mappings have already been made before we gain control 
+                            of the page tables.
+                        </li>
+                        <li>
+                            Additional mappings are attempting to be made with control of the page 
+                            tables.
+                        </li>
+                    </ol>
+                    <p>
+                        If additional mappings have already been made before we gained control 
+                        of the page tables (i.e. before gaining control of the self-referencing 
+                        PML4E), then we must simply traverse all page table mappings and find 
+                        and modify all mappings that we don't want mapped to be inaccessible. 
+                        This process will need to be repeated if new hooks are added that have 
+                        different page table mappings, as it's possible that the mappings exist 
+                        and need to be made inaccessible.
+                    </p>
+                    <p>
+                        If we already have control of the page tables, our job is, at least on 
+                        paper, much simpler. All that needs to be done is ensure that all attempts 
+                        to add these mappings to the page tables results in them remaining 
+                        inaccessible. 
+                    </p>
+                    <p>
+                        With full control of the page tables, it is now possible to hide the 
+                        presence of any tampering and prevent modifications that would remove
+                        the hooks.
+                    </p>
+                </div>
+
+                <h2>Closing Thoughts</h2>
+                <p>
+                    Although I was able to demonstrate the possiblity of using this concept 
+                    without the aid of any hardware virtualization, it is in my opinion that 
+                    the work necessary to achieve total system transparency without the use 
+                    of hardware virtualization would typically far exceed the effort needed.
+                    That said, there are still many situations where this concept remains quite 
+                    viable, particularly when coupled with some level of hardware virtualization 
+                    technology on either Intel or AMD processors.
+                </p>
+            </article>
+        </main>
+    </body>
+</html>
