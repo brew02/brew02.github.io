@@ -98,6 +98,11 @@ ol li:last-child {
     margin-bottom: 15px;
 }
 
+figcaption {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
 .post-link-container > a {
     font-weight: 600;
     font-size: 18px;
@@ -153,5 +158,10 @@ a:hover {
     max-width: 90%;
     max-height: 90%;
     display: block;
-    margin: 15px auto 15px auto;
+    margin: 15px auto 0 auto;
+}
+
+.references {
+    padding-left: 1em;
+    list-style: inside;
 }
