@@ -115,8 +115,8 @@
                         We swap the modified page frame number (PFN) to the original
                         PFN in the page table entry (PTE), set the AC bit in the RFLAGS register, and then
                         set the trap flag (TF) bit in the RFLAGS register (<code>RFLAGS[bit 8]</code>). After letting the instruction 
-                        execute, we handle the ensuing <code>#DB</code> by swapping the PFN once again and resetting
-                        the AC bit (the TF bit should already be cleared).
+                        execute, we handle the ensuing <code>#DB</code> by swapping the PFN, resetting the AC bit,
+                        and resetting the TF bit.
                     </p>    
                 </section>
 
