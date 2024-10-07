@@ -182,7 +182,7 @@
                             functionality, but it can be read or written to with even less
                             scrutiny than the CR4 register. As mentioned briefly before, despite 
                             the privilege checks for the <code>STAC</code> and <code>CLAC</code> 
-                            instructions, it was decided that user code could simply execute a 
+                            instructions, it was decided that user-mode code could simply execute a 
                             <code>POPF</code> instruction to update the AC bit. Consequently, it is 
                             possible for code running at any CPL to enable the AC bit, allowing free 
                             reign to read or write to our hooked pages.
@@ -376,11 +376,13 @@
                 <section>
                     <h2>Closing Thoughts</h2>
                     <p>
-                        Although I was able to demonstrate the possiblity of using this concept 
+                        Although I was able to 
+                        <a class="article-link" href="https://github.com/brew02/BudgetEPT" target="_blank">demonstrate</a> 
+                        the possiblity of using this concept 
                         without the aid of any hardware virtualization, it is in my opinion that 
                         the work necessary to achieve total system transparency without the use 
                         of hardware virtualization would typically far exceed the effort needed.
-                        That said, there are still many situations where this concept remains quite 
+                        That said, there are still some situations where this concept remains quite 
                         viable and useful for creating pseudo-EPT hooks, particularly when coupled 
                         with some level of hardware virtualization 
                         technology on either Intel or AMD processors.
