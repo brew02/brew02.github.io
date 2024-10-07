@@ -3,8 +3,36 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Extended Page Table Hooks on a Budget</title>
+        <meta name="author" content="brew02">
+        <meta name="description" content="Extended page tables (EPT) are a part of Intel's 
+            virtual machine extension (VMX) support for address translation. 
+            One of the unique things about EPT is that it allows programmers to easily 
+            allow execute-only accesses to pages of memory, something that isn't supported 
+            in the regular page tables, and isn't supported for AMD's very similar implementation 
+            called nested page tables (NPT). This unique feature has been utilized in many 
+            open source hypervisors for stealthy inline-hooks, allowing for easy monitoring 
+            and debugging of interesting pieces of code.">
+
+        <meta property="article:published_time" content="2024-09-30">
+        <meta property="og:description" content="Extended page tables (EPT) are a part of Intel's 
+            virtual machine extension (VMX) support for address translation. 
+            One of the unique things about EPT is that it allows programmers to easily 
+            allow execute-only accesses to pages of memory, something that isn't supported 
+            in the regular page tables, and isn't supported for AMD's very similar implementation 
+            called nested page tables (NPT). This unique feature has been utilized in many 
+            open source hypervisors for stealthy inline-hooks, allowing for easy monitoring 
+            and debugging of interesting pieces of code.">
+            
+        <meta property="og:url" content="https://brew02.github.io/posts/2024/budget-ept-hooks.html">
+        <meta property="og:site_name" content="Technical Blog">
+        <meta property="og:type" content="article">
+        <meta property="og:locale" content="en_US">
+        <meta property="og:image" content="/resources/favicon.ico">
+        <meta property="og:title" content="Extended Page Table Hooks on a Budget">
+        <link rel="canonical" href="https://brew02.github.io/posts/2024/budget-ept-hooks.html">
+        <link rel="icon" type="image/x-icon" href="/resources/favicon.ico">
         <link rel="stylesheet" href="/css/styles.css">
+        <title>Extended Page Table Hooks on a Budget</title>
     </head>
 
     <body>
