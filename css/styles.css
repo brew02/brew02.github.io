@@ -136,6 +136,12 @@ a:hover {
     padding: 15px;
 }
 
+@media screen and (max-width: 1200px) {
+    .box {
+        width: 90%;
+    }
+}
+
 .post-link-container {
     display: flex;
     align-items: center;
@@ -144,6 +150,10 @@ a:hover {
 
 .post-info {
     font-size: 14px;
+}
+
+.post-date {
+    margin-left: 15px;
 }
 
 .article-link {
