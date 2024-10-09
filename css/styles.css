@@ -73,10 +73,6 @@ ul {
     list-style: none;
 }
 
-nav li {
-    margin-left: 15px;
-}
-
 main li {
     margin-bottom: 15px;
 }
@@ -113,6 +109,8 @@ a:hover {
 }
 
 .home, h1 {
+    line-height: 100%;
+    text-decoration: none;
     font-size: 30px;
     font-weight: 800;
 }
@@ -124,6 +122,11 @@ a:hover {
 .image-link {
     width: 30px;
     height: 30px;
+}
+
+.author-links > li {
+    margin: 0;
+    margin-left: 10px;
 }
 
 .box {
@@ -142,17 +145,17 @@ a:hover {
     }
 }
 
-.post-link-container {
+.post-link-container, .project-lang-container {
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
-.post-info {
+.post-info, .lang-info {
     font-size: 14px;
 }
 
-.post-date {
+.post-date, .lang-info {
     margin-left: 15px;
 }
 
@@ -174,4 +177,26 @@ a:hover {
 .references {
     padding-left: 1em;
     list-style: inside;
+}
+
+.author {
+    margin: 0;
+    line-height: 100%;
+}
+
+.about {
+    line-height: 100%;
+    font-size: 30px;
+    font-weight: 600;
+    margin-left: 15px;
+}
+
+.author-links {
+    display: flex;
+    align-items: center;
+}
+
+.author-container {
+    margin-top: 15px;
+    margin-bottom: 6.5px;
 }
